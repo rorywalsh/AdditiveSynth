@@ -1,9 +1,8 @@
 /* ============================================================
-   p5 waveform, Web MIDI and computer-keyboard input
+   Waveform canvas, Web MIDI and computer-keyboard input
    ============================================================ */
 
 const NOTE_NAMES = ['C', 'C#', 'D', 'D#', 'E', 'F', 'F#', 'G', 'G#', 'A', 'A#', 'B'];
-const WAVE_COLOR = [94, 234, 212];
 
 // A W S E D F T G Y H U J K  =  C C# D D# E F F# G G# A A# B C
 const KEY_OFFSETS = {
@@ -34,109 +33,139 @@ const pedal = { down: false, held: new Set() };
 
 const byId = (id) => document.getElementById(id);
 
-/* ---------------------------------------------------------- p5 canvas */
+/* ---------------------------------------------------------- waveform */
 
-function setup() {
-  const holder = byId('waveform-holder');
-  const w = Math.max(280, holder.clientWidth);
-  const h = Math.max(180, holder.clientHeight);
+let waveformCanvas = null;
+let waveformContext = null;
+let waveformResizeObserver = null;
+let waveformWidth = 0;
+let waveformHeight = 0;
+let waveformPixelRatio = 1;
 
-  const canvas = createCanvas(w, h);
-  canvas.parent(holder);
-  pixelDensity(Math.min(window.devicePixelRatio || 1, 2));
+function initWaveform() {
+  waveformCanvas = byId('waveform-canvas');
+  if (!waveformCanvas) return;
 
-  if (typeof describe === 'function') {
-    describe('Animated waveform of the summed synth partials.');
-  }
+  waveformContext = waveformCanvas.getContext('2d');
+  resizeWaveform();
+
+  window.addEventListener('resize', resizeWaveform);
 
   if (typeof ResizeObserver !== 'undefined') {
-    const observer = new ResizeObserver(() => {
-      const widthNow = holder.clientWidth;
-      const heightNow = holder.clientHeight;
-      if (widthNow > 0 && heightNow > 0 && (widthNow !== width || heightNow !== height)) {
-        resizeCanvas(widthNow, heightNow);
-      }
-    });
-    observer.observe(holder);
+    waveformResizeObserver = new ResizeObserver(resizeWaveform);
+    waveformResizeObserver.observe(byId('waveform-holder'));
   }
+
+  requestAnimationFrame(tickWaveform);
 }
 
-function windowResized() {
+function resizeWaveform() {
   const holder = byId('waveform-holder');
-  if (holder && holder.clientWidth > 0 && holder.clientHeight > 0) {
-    resizeCanvas(holder.clientWidth, holder.clientHeight);
-  }
+  if (!waveformCanvas || !holder) return;
+
+  const width = Math.max(1, holder.clientWidth);
+  const height = Math.max(1, holder.clientHeight);
+
+  waveformWidth = width;
+  waveformHeight = height;
+  waveformPixelRatio = Math.min(window.devicePixelRatio || 1, 2);
+
+  waveformCanvas.width = Math.round(width * waveformPixelRatio);
+  waveformCanvas.height = Math.round(height * waveformPixelRatio);
+  waveformCanvas.style.width = `${width}px`;
+  waveformCanvas.style.height = `${height}px`;
 }
 
-function draw() {
-  background(9, 13, 19);
-  drawGrid();
+function tickWaveform() {
   drawWaveform();
-}
-
-function drawGrid() {
-  const w = width;
-  const h = height;
-
-  strokeWeight(1);
-  stroke(255, 255, 255, 9);
-  for (let i = 1; i < 8; i += 1) {
-    const x = (w / 8) * i;
-    line(x, 0, x, h);
-  }
-  for (let i = 1; i < 4; i += 1) {
-    if (i === 2) continue;
-    const y = (h / 4) * i;
-    line(0, y, w, h);
-  }
-
-  stroke(255, 255, 255, 20);
-  line(0, h / 2, w, h / 2);
+  requestAnimationFrame(tickWaveform);
 }
 
 function drawWaveform() {
+  if (!waveformCanvas || !waveformContext) return;
+
+  const ctx = waveformContext;
+  const w = waveformWidth;
+  const h = waveformHeight;
   const levels = Synth.displayLevels();
-  const mid = height / 2;
-  const baseScale = height * 0.34;
+
+  ctx.setTransform(waveformPixelRatio, 0, 0, waveformPixelRatio, 0, 0);
+  ctx.fillStyle = '#090d13';
+  ctx.fillRect(0, 0, w, h);
+
+  drawWaveformGrid(ctx, w, h);
+
+  const mid = h / 2;
+  const baseScale = h * 0.34;
   const cycles = 2;
-  const samples = [];
+  const count = Math.max(2, Math.ceil(w) + 1);
+  const values = new Array(count);
   let peak = 0;
 
-  for (let x = 0; x <= width; x += 1) {
-    const phase = (x / Math.max(width, 1)) * Math.PI * 2 * cycles;
+  for (let i = 0; i < count; i += 1) {
+    const phase = (i / Math.max(w, 1)) * Math.PI * 2 * cycles;
     let sample = 0;
 
-    for (let i = 0; i < levels.length; i += 1) {
-      sample += levels[i].level * Math.sin(phase * levels[i].ratio);
+    for (let j = 0; j < levels.length; j += 1) {
+      sample += levels[j].level * Math.sin(phase * levels[j].ratio);
     }
 
-    samples.push([x, sample]);
+    values[i] = sample;
     peak = Math.max(peak, Math.abs(sample));
   }
 
-  if (samples.length === 0) return;
-
   // Keep the normal amplitude visible, but shrink very loud sums so the
   // waveform stays inside the canvas instead of clipping at the edges.
-  const fitScale = (height * 0.42) / Math.max(peak, 0.0001);
+  const fitScale = (h * 0.42) / Math.max(peak, 0.0001);
   const amplitudeScale = Math.min(baseScale, fitScale);
-  const points = samples.map(([x, sample]) => [x, mid - sample * amplitudeScale]);
 
-  noFill();
+  ctx.beginPath();
+  for (let i = 0; i < count; i += 1) {
+    const y = mid - values[i] * amplitudeScale;
+    if (i === 0) ctx.moveTo(i, y);
+    else ctx.lineTo(i, y);
+  }
+
+  ctx.lineJoin = 'round';
+  ctx.lineCap = 'round';
 
   // Soft glow behind the line.
-  stroke(WAVE_COLOR[0], WAVE_COLOR[1], WAVE_COLOR[2], 22);
-  strokeWeight(9);
-  beginShape();
-  for (const pt of points) vertex(pt[0], pt[1]);
-  endShape();
+  ctx.strokeStyle = 'rgba(94, 234, 212, 0.08)';
+  ctx.lineWidth = 9;
+  ctx.stroke();
 
   // Main waveform.
-  stroke(WAVE_COLOR[0], WAVE_COLOR[1], WAVE_COLOR[2], 235);
-  strokeWeight(2);
-  beginShape();
-  for (const pt of points) vertex(pt[0], pt[1]);
-  endShape();
+  ctx.strokeStyle = 'rgba(94, 234, 212, 0.92)';
+  ctx.lineWidth = 2;
+  ctx.stroke();
+}
+
+function drawWaveformGrid(ctx, w, h) {
+  ctx.lineWidth = 1;
+  ctx.strokeStyle = 'rgba(255, 255, 255, 0.035)';
+  ctx.beginPath();
+
+  for (let i = 1; i < 8; i += 1) {
+    const x = Math.round((w / 8) * i) + 0.5;
+    ctx.moveTo(x, 0);
+    ctx.lineTo(x, h);
+  }
+
+  for (let i = 1; i < 4; i += 1) {
+    if (i === 2) continue;
+    const y = Math.round((h / 4) * i) + 0.5;
+    ctx.moveTo(0, y);
+    ctx.lineTo(w, y);
+  }
+
+  ctx.stroke();
+
+  ctx.strokeStyle = 'rgba(255, 255, 255, 0.075)';
+  ctx.beginPath();
+  const center = Math.round(h / 2) + 0.5;
+  ctx.moveTo(0, center);
+  ctx.lineTo(w, center);
+  ctx.stroke();
 }
 
 /* ---------------------------------------------------------- app init */
@@ -153,6 +182,7 @@ function initApp() {
   });
 
   PartialUI.init();
+  initWaveform();
 
   wireAudioButton();
   wirePanicButton();

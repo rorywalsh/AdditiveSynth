@@ -5,8 +5,8 @@
    Played notes are summed into a master bus with a safety
    compressor so a pile of loud partials cannot clip the output.
 
-   This file uses the Web Audio API directly. p5.sound is not
-   required; p5.js is only used for the waveform drawing.
+   This file uses the Web Audio API directly. No audio library is
+   required; the waveform is drawn with the Canvas 2D API.
    ============================================================ */
 
 const Synth = (() => {

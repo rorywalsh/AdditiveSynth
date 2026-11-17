@@ -6,7 +6,6 @@
     <meta name="theme-color" content="#080b10" />
     <title>Additive Synth Lab</title>
 
-    <script src="p5.js"></script>
     <link rel="stylesheet" type="text/css" href="style.css" />
   </head>
   <body>
@@ -45,7 +44,15 @@
             <span id="mode-badge" class="badge">Sustain preview</span>
           </div>
 
-          <div id="waveform-holder" class="waveform-holder"></div>
+          <div id="waveform-holder" class="waveform-holder">
+            <canvas
+              id="waveform-canvas"
+              role="img"
+              aria-label="Animated waveform of the summed synth partials"
+            >
+              Your browser does not support the canvas element.
+            </canvas>
+          </div>
 
           <div class="scope-meta">
             <span><span id="partial-count">1</span> <span id="partial-count-label">partial</span></span>
@@ -113,7 +120,7 @@
         </section>
       </main>
 
-      <footer class="foot">Every tone is a sum of sines · Web Audio + p5.js</footer>
+      <footer class="foot">Every tone is a sum of sines · Web Audio + Canvas 2D</footer>
     </div>
 
     <template id="partial-template">

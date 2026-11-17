@@ -2,7 +2,7 @@
 
 A small Web MIDI additive synthesizer for the classroom. Each partial is
 one sine oscillator with its own amplitude, frequency multiple and ADSR
-envelope. The p5.js canvas draws the sum of all partials.
+envelope. A plain canvas draws the sum of all partials.
 
 ## Run it
 
@@ -38,7 +38,7 @@ No MIDI keyboard? Use the computer keys:
 - Set sustain to 0% to make a percussive, plucked sound; set a long
   attack and release to make a pad.
 - The scope shows the waveform at the sustain level when idle, and the
-  live envelope while notes are held. It is drawn by p5.js.
+  live envelope while notes are held. It is drawn with the Canvas 2D API.
 
 ## Saving and loading patches
 
@@ -66,16 +66,15 @@ the first 16.
 
 | File         | Purpose                                                       |
 | ------------ | ------------------------------------------------------------- |
-| `index.html` | Page structure and the partial-card `<template>`              |
+| `index.html` | Page structure, waveform canvas and the partial-card template |
 | `style.css`  | Dark, responsive interface styling                            |
 | `synth.js`   | Web Audio engine: oscillators, envelopes, voices, master bus  |
 | `ui.js`      | Builds the partial control cards and wires their inputs       |
-| `sketch.js`  | p5 waveform canvas, Web MIDI, computer keyboard, status UI    |
-| `p5.js`      | p5.js 2.3.4 (local copy, so the class works offline)          |
+| `sketch.js`  | Canvas waveform, Web MIDI, computer keyboard, status UI       |
 
-`p5.sound.min.js` is not used: the engine talks to the Web Audio API
-directly. This makes per-partial envelopes, polyphony and exponential
-segments straightforward. p5.js is only responsible for the canvas.
+There are no runtime libraries or build steps: the audio engine uses the
+Web Audio API directly, and the scope uses the Canvas 2D API. This keeps
+per-partial envelopes, polyphony and exponential segments straightforward.
 
 ## How it works, briefly
 
