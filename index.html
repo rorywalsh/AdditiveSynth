@@ -1,0 +1,186 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <meta name="theme-color" content="#080b10" />
+    <title>Additive Synth Lab</title>
+
+    <script src="p5.js"></script>
+    <link rel="stylesheet" type="text/css" href="style.css" />
+  </head>
+  <body>
+    <div class="app">
+      <header class="topbar">
+        <div class="brand">
+          <span class="logo" aria-hidden="true">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round">
+              <path d="M2 12c2.2-5.6 4.6-5.6 6.8 0s4.6 5.6 6.8 0c1.3-3.3 3-3.8 6.4-2.2" />
+            </svg>
+          </span>
+          <div>
+            <h1>Additive Synth <span>Lab</span></h1>
+            <p>Build a tone one sine at a time.</p>
+          </div>
+        </div>
+
+        <div class="topbar-right">
+          <button id="midi-status" class="pill" type="button" title="Looking for MIDI keyboards…">
+            <span class="dot" aria-hidden="true"></span>
+            <span id="midi-status-text" aria-live="polite">Searching for MIDI…</span>
+          </button>
+          <button id="audio-btn" class="audio-btn needs-audio" type="button" title="Start the audio engine">
+            Enable sound
+          </button>
+        </div>
+      </header>
+
+      <main class="layout">
+        <section class="panel scope-panel" aria-labelledby="scope-title">
+          <div class="panel-head">
+            <div>
+              <h2 id="scope-title">Waveform</h2>
+              <p class="eyebrow" id="playing-note">No note playing</p>
+            </div>
+            <span id="mode-badge" class="badge">Sustain preview</span>
+          </div>
+
+          <div id="waveform-holder" class="waveform-holder"></div>
+
+          <div class="scope-meta">
+            <span><span id="partial-count">1</span> <span id="partial-count-label">partial</span></span>
+            <span id="voice-count">0 voices</span>
+            <button id="panic-btn" class="ghost-btn" type="button" title="Release every sounding note (Esc)">
+              All notes off
+            </button>
+          </div>
+
+          <div class="master-row">
+            <label class="master-label" for="master-volume">Master volume</label>
+            <input id="master-volume" class="range" type="range" min="0" max="1" step="0.01" value="0.7" />
+            <output id="master-volume-out" for="master-volume">70%</output>
+          </div>
+
+          <p class="hint">
+            Play a MIDI keyboard, or use your computer keys:
+            <kbd>A</kbd> <kbd>W</kbd> <kbd>S</kbd> <kbd>E</kbd> <kbd>D</kbd> <kbd>F</kbd> …
+            <kbd>K</kbd>. <kbd>Z</kbd> / <kbd>X</kbd> shift octave
+            <span id="octave-display" class="octave">4</span>. <kbd>Esc</kbd> releases all notes.
+          </p>
+        </section>
+
+        <section class="panel partials-panel" aria-labelledby="partials-title">
+          <div class="panel-head">
+            <div>
+              <h2 id="partials-title">Partials</h2>
+              <p class="eyebrow">Each partial is one sine oscillator</p>
+            </div>
+            <span class="badge" id="partial-total">1 / 16</span>
+          </div>
+
+          <div class="patch-row">
+            <button id="save-patch" class="patch-btn" type="button" title="Download the current patch as a JSON file">
+              <svg viewBox="0 0 16 16" width="13" height="13" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                <path d="M8 2.5v7.5m0 0L5.2 7.2M8 10l2.8-2.8" />
+                <path d="M2.5 11.3v1.2c0 .55.45 1 1 1h9c.55 0 1-.45 1-1v-1.2" />
+              </svg>
+              Download JSON
+            </button>
+            <button id="load-patch" class="patch-btn" type="button" title="Load a patch from a JSON file">
+              <svg viewBox="0 0 16 16" width="13" height="13" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                <path d="M8 10V2.5m0 0L5.2 5.3M8 2.5l2.8 2.8" />
+                <path d="M2.5 11.3v1.2c0 .55.45 1 1 1h9c.55 0 1-.45 1-1v-1.2" />
+              </svg>
+              Load JSON
+            </button>
+            <input id="patch-file" class="patch-file" type="file" accept=".json,application/json" hidden />
+            <span id="patch-status" class="patch-status" role="status" aria-live="polite"></span>
+          </div>
+
+          <div id="partials" class="partials"></div>
+
+          <button id="add-partial" class="add-partial" type="button">
+            <span class="plus" aria-hidden="true">+</span>
+            <span class="add-text">Add partial</span>
+          </button>
+
+          <p class="panel-note">
+            Frequency is a multiple of the note you play:
+            <strong>×1</strong> is the fundamental, <strong>×2</strong> the octave,
+            <strong>×3</strong> a twelfth. Amplitude and frequency change while you play;
+            envelope edits apply to the next note.
+          </p>
+        </section>
+      </main>
+
+      <footer class="foot">Every tone is a sum of sines · Web Audio + p5.js</footer>
+    </div>
+
+    <template id="partial-template">
+      <article class="partial">
+        <header class="partial-head">
+          <h3>
+            <span class="partial-number">1</span>
+            <span class="partial-label">Partial</span>
+          </h3>
+          <div class="partial-tools">
+            <span class="ratio-chip">×1</span>
+            <button class="remove-btn" type="button" title="Remove this partial">
+              <svg viewBox="0 0 16 16" width="12" height="12" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round">
+                <path d="M4.5 4.5l7 7M11.5 4.5l-7 7" />
+              </svg>
+            </button>
+          </div>
+        </header>
+
+        <div class="control-row">
+          <label class="field">
+            <span class="field-head"><span>Amplitude</span><output class="amp-out">0.80</output></span>
+            <input class="amp range" type="range" min="0" max="1" step="0.01" value="0.8" />
+          </label>
+
+          <label class="field ratio-field">
+            <span class="field-head"><span>Frequency</span><span class="muted">× base</span></span>
+            <span class="ratio-box">
+              <span class="prefix" aria-hidden="true">×</span>
+              <input class="ratio" type="number" inputmode="decimal" min="0.01" max="32" step="0.01" value="1" />
+            </span>
+          </label>
+        </div>
+
+        <div class="env">
+          <div class="env-head"><span>Envelope</span><span class="muted">ADSR</span></div>
+
+          <div class="adsr">
+            <label class="field adsr-field">
+              <span class="field-head"><span>Attack</span><output class="a-out">10 ms</output></span>
+              <input class="a range" type="range" min="0" max="2000" step="1" value="10" />
+            </label>
+            <label class="field adsr-field">
+              <span class="field-head"><span>Decay</span><output class="d-out">300 ms</output></span>
+              <input class="d range" type="range" min="0" max="2000" step="1" value="300" />
+            </label>
+            <label class="field adsr-field">
+              <span class="field-head"><span>Sustain</span><output class="s-out">60%</output></span>
+              <input class="s range" type="range" min="0" max="1" step="0.01" value="0.6" />
+            </label>
+            <label class="field adsr-field">
+              <span class="field-head"><span>Release</span><output class="r-out">600 ms</output></span>
+              <input class="r range" type="range" min="0" max="4000" step="1" value="600" />
+            </label>
+          </div>
+
+          <label class="toggle">
+            <input class="exp" type="checkbox" />
+            <span class="track" aria-hidden="true"></span>
+            <span>Exponential envelope</span>
+          </label>
+        </div>
+      </article>
+    </template>
+
+    <script src="synth.js"></script>
+    <script src="ui.js"></script>
+    <script src="sketch.js"></script>
+  </body>
+</html>
