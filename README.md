@@ -4,7 +4,9 @@ A small Web MIDI additive synthesizer for the classroom. Each partial is
 one sine oscillator with its own amplitude, frequency multiple and ADSR
 envelope. A plain canvas draws the sum of all partials.
 
-## Run it
+**Live site:** <https://rorywalsh.github.io/AdditiveSynth/>
+
+## Run it locally
 
 Web MIDI needs a secure origin, so serve the folder rather than opening
 `index.html` directly:
@@ -17,6 +19,9 @@ python -m http.server 8000
 Then open <http://localhost:8000> in Chrome or Edge. Click **Enable
 sound**, play a MIDI keyboard, and the device is picked up automatically
 (MIDI devices can also be plugged in after the page loads).
+
+GitHub Pages serves the same files from the `main` branch root, so pushing
+to `main` updates the live URL above automatically.
 
 No MIDI keyboard? Use the computer keys:
 
