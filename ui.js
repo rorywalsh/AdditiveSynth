@@ -25,9 +25,23 @@ const PartialUI = (() => {
 
   const formatRatio = (value) => String(Math.round(value * 1000) / 1000);
 
+  const AMP_DB_MIN = -60;
+
+  const linearToDb = (linear) =>
+    linear > 0 ? Math.max(AMP_DB_MIN, 20 * Math.log10(linear)) : AMP_DB_MIN;
+
+  const dbToLinear = (db) =>
+    db <= AMP_DB_MIN ? 0 : Math.min(1, Math.pow(10, db / 20));
+
+  const formatDb = (linear) => {
+    if (linear <= 0) return '-∞ dB';
+    const db = 20 * Math.log10(linear);
+    return `${db <= -0.05 ? db.toFixed(1) : '0.0'} dB`;
+  };
+
   function paintRange(input) {
-    const min = Number(input.min) || 0;
-    const max = Number(input.max) || 1;
+    const min = input.min === '' ? 0 : Number(input.min);
+    const max = input.max === '' ? 1 : Number(input.max);
     const value = Number(input.value);
     const percent = max === min ? 0 : ((value - min) / (max - min)) * 100;
     input.style.setProperty(
@@ -50,17 +64,24 @@ const PartialUI = (() => {
     const removeBtn = q('.remove-btn');
     removeBtn.setAttribute('aria-label', `Remove partial ${index + 1}`);
 
-    /* ---- amplitude ---- */
+    /* ---- amplitude (linear gain, shown in dB where 1.0 = 0 dB) ---- */
     const amp = q('.amp');
     const ampOut = q('.amp-out');
-    amp.value = String(partial.amp);
-    ampOut.textContent = partial.amp.toFixed(2);
+
+    const showAmplitude = (linear) => {
+      const label = formatDb(linear);
+      ampOut.textContent = label;
+      amp.setAttribute('aria-valuetext', label);
+    };
+
+    amp.value = String(linearToDb(partial.amp));
+    showAmplitude(partial.amp);
     paintRange(amp);
 
     amp.addEventListener('input', () => {
-      const value = Number(amp.value);
-      Synth.updatePartial(partial.id, { amp: value });
-      ampOut.textContent = value.toFixed(2);
+      const linear = dbToLinear(Number(amp.value));
+      Synth.updatePartial(partial.id, { amp: linear });
+      showAmplitude(linear);
       paintRange(amp);
     });
 

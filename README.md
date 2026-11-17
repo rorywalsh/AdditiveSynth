@@ -32,7 +32,7 @@ No MIDI keyboard? Use the computer keys:
 ## What students can explore
 
 - **Add partials** with the `+ Add partial` button. Each partial has:
-  - an **amplitude** slider
+  - an **amplitude** slider in dB (0 dB = full, −∞ dB = muted)
   - a **frequency multiple** text box (×1 = fundamental, ×2 = octave,
     ×3 = twelfth, ×1.5 = perfect fifth above the fundamental, etc.)
   - an **ADSR envelope** with Attack, Decay, Sustain and Release
@@ -63,7 +63,9 @@ volume:
 }
 ```
 
-Envelope times are in seconds. Loading a patch stops any sounding notes and
+Envelope times are in seconds. `amp` is stored as linear gain (0–1) for
+compatibility; the interface displays it in dB, so `1.0` is `0.0 dB` and
+`0.8` is about `-1.9 dB`. Loading a patch stops any sounding notes and
 replaces the whole patch; files with more than 16 partials are shortened to
 the first 16.
 
